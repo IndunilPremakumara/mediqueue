@@ -67,6 +67,7 @@ function PatientDashboard({ user, logout }) {
       const res = await API.post("/appointments/book", {
         patient_name: name,
         doctor_id: selectedDoctorId,
+        doctor_name: selectedDoctorName,
         appointment_time: appointmentTime,
       });
 
@@ -85,7 +86,8 @@ function PatientDashboard({ user, logout }) {
     try {
       await API.post("/appointments/cancel", {
         patient_name: name,
-        doctor_id: selectedDoctorId
+        doctor_id: selectedDoctorId,
+        doctor_name: selectedDoctorName
       });
       setBooked(false);
       setQueueNum(null);
@@ -111,7 +113,7 @@ function PatientDashboard({ user, logout }) {
         API.get(`/queue/position/${selectedDoctorId}/${name}`)
           .then(res => {
             setQueueNum(res.data.position);
-            setBooked(true); 
+            setBooked(true);
           })
           .catch(() => {
             // If position fetch fails, maybe not booked or not in queue yet
@@ -137,10 +139,10 @@ function PatientDashboard({ user, logout }) {
       socket.off("queueUpdated", handleUpdate);
       socket.off("appointmentFinished", handleFinished);
     };
-  }, [name, selectedDoctorId]); 
+  }, [name, selectedDoctorId]);
 
   return (
-   <div style={styles.page}>
+    <div style={styles.page}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
         @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }

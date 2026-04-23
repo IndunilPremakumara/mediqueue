@@ -14,7 +14,7 @@ router.post("/book", verifyToken, checkRole(["patient", "admin"]), async (req, r
   const client = await pool.connect();
 
   try {
-    const { patient_name, doctor_id, appointment_time } = req.body;
+    const { patient_name, doctor_id, doctor_name, appointment_time } = req.body;
 
     if (!patient_name || !doctor_id || !appointment_time) {
       return res.status(400).json("Missing required booking information.");
@@ -52,6 +52,7 @@ router.post("/book", verifyToken, checkRole(["patient", "admin"]), async (req, r
 
     publishEvent("appointment.booked", {
       doctor_id,
+      doctor_name: doctor_name || `Dr. ${doctor_id}`,
       patient_name,
       appointment_time
     });
@@ -69,7 +70,7 @@ router.post("/book", verifyToken, checkRole(["patient", "admin"]), async (req, r
 
 // CANCEL APPOINTMENT
 router.post("/cancel", verifyToken, checkRole(["patient", "doctor", "admin"]), async (req, res) => {
-  const { patient_name, doctor_id } = req.body;
+  const { patient_name, doctor_id, doctor_name } = req.body;
   try {
     const result = await pool.query(
       "UPDATE appointments SET status = 'cancelled' WHERE patient_name = $1 AND doctor_id = $2 AND status = 'booked' RETURNING *",
@@ -82,6 +83,7 @@ router.post("/cancel", verifyToken, checkRole(["patient", "doctor", "admin"]), a
 
     publishEvent("appointment.cancelled", {
       doctor_id,
+      doctor_name: doctor_name || `Dr. ${doctor_id}`,
       patient_name
     });
 
