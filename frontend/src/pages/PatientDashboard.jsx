@@ -63,7 +63,7 @@ function PatientDashboard({ user, logout }) {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const res = await API.post("/appointments/book", {
+      await API.post("/appointments/book", {
         patient_name: name,
         doctor_id: selectedDoctorId,
         doctor_name: selectedDoctorName,
