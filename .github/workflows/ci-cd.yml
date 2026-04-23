@@ -1,0 +1,178 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: docker.io
+
+jobs:
+  lint-and-build-frontend:
+    name: Lint & Build Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+
+  validate-services:
+    name: Validate - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - gateway
+          - services/user-service
+          - services/appointment-service
+          - services/queue-service
+          - services/notification-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.service }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ matrix.service }}
+
+      - name: Run tests
+        run: npm test --if-present
+        working-directory: ${{ matrix.service }}
+
+  docker-build:
+    name: Build & Cache Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint-and-build-frontend, validate-services]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            context: gateway
+            image: mediqueue-gateway
+          - service: user-service
+            context: services/user-service
+            image: mediqueue-user-service
+          - service: appointment-service
+            context: services/appointment-service
+            image: mediqueue-appointment-service
+          - service: queue-service
+            context: services/queue-service
+            image: mediqueue-queue-service
+          - service: notification-service
+            context: services/notification-service
+            image: mediqueue-notification-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          tags: |
+            ${{ matrix.image }}:latest
+            ${{ matrix.image }}:${{ github.sha }}
+          outputs: type=docker,dest=/tmp/${{ matrix.image }}.tar
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.image }}
+          path: /tmp/${{ matrix.image }}.tar
+          retention-days: 1
+
+  publish-containers:
+    name: Publish - ${{ matrix.image }}
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: docker-build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            image: mediqueue-gateway
+          - service: user-service
+            image: mediqueue-user-service
+          - service: appointment-service
+            image: mediqueue-appointment-service
+          - service: queue-service
+            image: mediqueue-queue-service
+          - service: notification-service
+            image: mediqueue-notification-service
+
+    steps:
+      - name: Check Docker Hub secrets
+        id: check-secrets
+        run: |
+          if [[ -n "${{ secrets.DOCKERHUB_USERNAME }}" && -n "${{ secrets.DOCKERHUB_TOKEN }}" ]]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+            echo "::warning::Docker Hub secrets not configured, skipping publish."
+          fi
+
+      - name: Download image artifact
+        if: steps.check-secrets.outputs.available == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.image }}
+          path: /tmp
+
+      - name: Load Docker image
+        if: steps.check-secrets.outputs.available == 'true'
+        run: docker load --input /tmp/${{ matrix.image }}.tar
+
+      - name: Login to Docker Hub
+        if: steps.check-secrets.outputs.available == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push image
+        if: steps.check-secrets.outputs.available == 'true'
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
