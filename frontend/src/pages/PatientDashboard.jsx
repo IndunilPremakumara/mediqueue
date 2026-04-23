@@ -10,7 +10,6 @@ function PatientDashboard({ user, logout }) {
   const [booked, setBooked] = useState(false);
   const [finished, setFinished] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("Dashboard");
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [selectedDoctorName, setSelectedDoctorName] = useState("No doctor selected");
@@ -164,16 +163,12 @@ function PatientDashboard({ user, logout }) {
         <nav style={styles.nav}>
           {[
             { icon: "⊞", label: "Dashboard" },
-            { icon: "📅", label: "Appointments" },
-            { icon: "🩺", label: "My Doctor" },
-            { icon: "📋", label: "Records" },
           ].map(({ icon, label }) => (
             <div
               key={label}
-              onClick={() => setActiveTab(label)}
               style={{
                 ...styles.navItem,
-                ...(activeTab === label ? styles.navItemActive : {})
+                ...styles.navItemActive
               }}
             >
               <span style={{ fontSize: 16 }}>{icon}</span>
@@ -211,149 +206,138 @@ function PatientDashboard({ user, logout }) {
           </div>
         </div>
 
-        {/* Conditional Content */}
-        {activeTab === "Dashboard" ? (
-          <>
-            {/* Stats row */}
-            <div style={styles.statsGrid}>
-              {[
-                { label: "Your Queue #", value: queueNum ?? "—", accent: "#00C9A7" },
-                { label: "Avg. Wait Time", value: "18 min", accent: "#7F77DD" },
-                { label: "Doctor", value: selectedDoctorName, accent: "#378ADD" },
-                { label: "Status", value: booked ? "Booked" : "Not Booked", accent: booked ? "#639922" : "#888780" },
-              ].map(({ label, value, accent }) => (
-                <div key={label} style={styles.statCard}>
-                  <span style={styles.statLabel}>{label}</span>
-                  <span style={{ ...styles.statValue, color: accent }}>{value}</span>
+        {/* Dashboard Content */}
+        <div style={styles.statsGrid}>
+          {[
+            { label: "Your Queue #", value: queueNum ?? "—", accent: "#00C9A7" },
+            { label: "Avg. Wait Time", value: "18 min", accent: "#7F77DD" },
+            { label: "Doctor", value: selectedDoctorName, accent: "#378ADD" },
+            { label: "Status", value: booked ? "Booked" : "Not Booked", accent: booked ? "#639922" : "#888780" },
+          ].map(({ label, value, accent }) => (
+            <div key={label} style={styles.statCard}>
+              <span style={styles.statLabel}>{label}</span>
+              <span style={{ ...styles.statValue, color: accent }}>{value}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={styles.contentGrid}>
+          {/* Booking card */}
+          <div style={styles.card}>
+            <div style={styles.cardHeaderRow}>
+              <h2 style={styles.cardTitle}>Book Appointment</h2>
+              <span style={styles.tag}>General Consultation</span>
+            </div>
+
+            <div style={styles.fieldRow}>
+              <label style={styles.fieldLabel}>Your Full Name</label>
+              <input
+                placeholder="Enter your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                style={styles.input}
+                onFocus={(e) => { e.target.style.borderColor = "#00C9A7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,201,167,0.1)"; }}
+                onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
+              />
+            </div>
+
+            <div style={styles.fieldRow}>
+              <label style={styles.fieldLabel}>Select Specialist</label>
+              <select
+                value={selectedDoctorId}
+                onChange={(e) => {
+                  setSelectedDoctorId(e.target.value);
+                  const doc = doctors.find(d => d._id === e.target.value);
+                  if (doc) setSelectedDoctorName(doc.name);
+                }}
+                style={styles.select}
+              >
+                {doctors.map(d => (
+                  <option key={d._id} value={d._id}>{d.name}</option>
+                ))}
+                {doctors.length === 0 && <option>No doctors available</option>}
+              </select>
+            </div>
+
+            <div style={styles.fieldRow}>
+              <label style={styles.fieldLabel}>Appointment Time</label>
+              <input
+                placeholder="YYYY-MM-DD HH:MM:SS"
+                value={appointmentTime}
+                onChange={(e) => setAppointmentTime(e.target.value)}
+                style={styles.input}
+                onFocus={(e) => { e.target.style.borderColor = "#00C9A7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,201,167,0.1)"; }}
+                onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
+              />
+            </div>
+
+            <div style={styles.infoRow}>
+              <InfoItem icon="🗓" label="Date" value="Apr 15, 2026" />
+              <InfoItem icon="🕙" label="Time" value="10:00 AM" />
+              <InfoItem icon="🩺" label="Doctor" value={selectedDoctorName.split(" ")[0]} />
+            </div>
+
+            <button
+              onClick={book}
+              disabled={loading || booked || !name.trim()}
+              style={{
+                ...styles.bookBtn,
+                ...(booked ? styles.bookBtnSuccess : {}),
+                ...((loading || !name.trim()) && !booked ? styles.bookBtnDisabled : {}),
+              }}
+            >
+              {loading ? "Booking..." : booked ? "✓ Appointment Confirmed" : "Confirm Booking"}
+            </button>
+          </div>
+
+          {/* Live Queue */}
+          <div style={styles.card}>
+            <div style={styles.cardHeaderRow}>
+              <h2 style={styles.cardTitle}>Live Queue</h2>
+              <div style={styles.livePill}>
+                <span style={{ ...styles.badgeDot, background: "#00C9A7", animation: "pulse 1.5s infinite" }} />
+                LIVE
+              </div>
+            </div>
+
+            <div style={styles.queueDisplay}>
+              <div style={{ ...styles.queueCircle, borderColor: finished ? "#7F77DD" : "rgba(0,201,167,0.3)", background: finished ? "rgba(127,119,221,0.05)" : "rgba(0,201,167,0.05)" }}>
+                <span style={{ ...styles.queueNumber, color: finished ? "#7F77DD" : "#00C9A7" }}>{finished ? "✓" : (queueNum ?? "—")}</span>
+                <span style={styles.queueSub}>{finished ? "Finished" : "Your number"}</span>
+              </div>
+            </div>
+
+            <div style={styles.queueMessageBox}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#378ADD" strokeWidth="2" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span style={styles.queueMessage}>{queue}</span>
+            </div>
+
+            <div style={styles.queueTimeline}>
+              {["Registered", "In Queue", "Called", "Finished"].map((step, i) => (
+                <div key={step} style={styles.timelineItem}>
+                  <div style={{
+                    ...styles.timelineDot,
+                    background: finished ? (i <= 3 ? "#7F77DD" : "rgba(255,255,255,0.1)") : (i <= (booked ? 1 : 0) ? "#00C9A7" : "rgba(255,255,255,0.1)"),
+                    border: finished ? (i === 3 ? "2px solid #7F77DD" : "2px solid transparent") : (i === (booked ? 1 : 0) ? "2px solid #00C9A7" : "2px solid transparent"),
+                  }} />
+                  <span style={{ ...styles.timelineLabel, color: finished ? (i <= 3 ? "#fff" : "rgba(255,255,255,0.3)") : (i <= (booked ? 1 : 0) ? "#fff" : "rgba(255,255,255,0.3)") }}>{step}</span>
                 </div>
               ))}
             </div>
 
-            <div style={styles.contentGrid}>
-              {/* Booking card */}
-              <div style={styles.card}>
-                <div style={styles.cardHeaderRow}>
-                  <h2 style={styles.cardTitle}>Book Appointment</h2>
-                  <span style={styles.tag}>General Consultation</span>
-                </div>
-
-                <div style={styles.fieldRow}>
-                  <label style={styles.fieldLabel}>Your Full Name</label>
-                  <input
-                    placeholder="Enter your name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    style={styles.input}
-                    onFocus={(e) => { e.target.style.borderColor = "#00C9A7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,201,167,0.1)"; }}
-                    onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
-                  />
-                </div>
-
-                <div style={styles.fieldRow}>
-                  <label style={styles.fieldLabel}>Select Specialist</label>
-                  <select
-                    value={selectedDoctorId}
-                    onChange={(e) => {
-                      setSelectedDoctorId(e.target.value);
-                      const doc = doctors.find(d => d._id === e.target.value);
-                      if (doc) setSelectedDoctorName(doc.name);
-                    }}
-                    style={styles.select}
-                  >
-                    {doctors.map(d => (
-                      <option key={d._id} value={d._id}>{d.name}</option>
-                    ))}
-                    {doctors.length === 0 && <option>No doctors available</option>}
-                  </select>
-                </div>
-
-                <div style={styles.fieldRow}>
-                  <label style={styles.fieldLabel}>Appointment Time</label>
-                  <input
-                    placeholder="YYYY-MM-DD HH:MM:SS"
-                    value={appointmentTime}
-                    onChange={(e) => setAppointmentTime(e.target.value)}
-                    style={styles.input}
-                    onFocus={(e) => { e.target.style.borderColor = "#00C9A7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,201,167,0.1)"; }}
-                    onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
-                  />
-                </div>
-
-                <div style={styles.infoRow}>
-                  <InfoItem icon="🗓" label="Date" value="Apr 15, 2026" />
-                  <InfoItem icon="🕙" label="Time" value="10:00 AM" />
-                  <InfoItem icon="🩺" label="Doctor" value={selectedDoctorName.split(" ")[0]} />
-                </div>
-
-                <button
-                  onClick={book}
-                  disabled={loading || booked || !name.trim()}
-                  style={{
-                    ...styles.bookBtn,
-                    ...(booked ? styles.bookBtnSuccess : {}),
-                    ...((loading || !name.trim()) && !booked ? styles.bookBtnDisabled : {}),
-                  }}
-                >
-                  {loading ? "Booking..." : booked ? "✓ Appointment Confirmed" : "Confirm Booking"}
-                </button>
-              </div>
-
-              {/* Live Queue */}
-              <div style={styles.card}>
-                <div style={styles.cardHeaderRow}>
-                  <h2 style={styles.cardTitle}>Live Queue</h2>
-                  <div style={styles.livePill}>
-                    <span style={{ ...styles.badgeDot, background: "#00C9A7", animation: "pulse 1.5s infinite" }} />
-                    LIVE
-                  </div>
-                </div>
-
-                <div style={styles.queueDisplay}>
-                  <div style={{ ...styles.queueCircle, borderColor: finished ? "#7F77DD" : "rgba(0,201,167,0.3)", background: finished ? "rgba(127,119,221,0.05)" : "rgba(0,201,167,0.05)" }}>
-                    <span style={{ ...styles.queueNumber, color: finished ? "#7F77DD" : "#00C9A7" }}>{finished ? "✓" : (queueNum ?? "—")}</span>
-                    <span style={styles.queueSub}>{finished ? "Finished" : "Your number"}</span>
-                  </div>
-                </div>
-
-                <div style={styles.queueMessageBox}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#378ADD" strokeWidth="2" style={{ flexShrink: 0 }}>
-                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-                  </svg>
-                  <span style={styles.queueMessage}>{queue}</span>
-                </div>
-
-                <div style={styles.queueTimeline}>
-                  {["Registered", "In Queue", "Called", "Finished"].map((step, i) => (
-                    <div key={step} style={styles.timelineItem}>
-                      <div style={{
-                        ...styles.timelineDot,
-                        background: finished ? (i <= 3 ? "#7F77DD" : "rgba(255,255,255,0.1)") : (i <= (booked ? 1 : 0) ? "#00C9A7" : "rgba(255,255,255,0.1)"),
-                        border: finished ? (i === 3 ? "2px solid #7F77DD" : "2px solid transparent") : (i === (booked ? 1 : 0) ? "2px solid #00C9A7" : "2px solid transparent"),
-                      }} />
-                      <span style={{ ...styles.timelineLabel, color: finished ? (i <= 3 ? "#fff" : "rgba(255,255,255,0.3)") : (i <= (booked ? 1 : 0) ? "#fff" : "rgba(255,255,255,0.3)") }}>{step}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {booked && (
-                  <button
-                    onClick={cancelAppointment}
-                    disabled={loading}
-                    style={{ ...styles.cancelBtn, marginTop: 20 }}
-                  >
-                    {loading ? "Cancelling..." : "Cancel Appointment"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          <div style={styles.placeholderCard}>
-            <div style={styles.placeholderIcon}>{activeTab === "Appointments" ? "📅" : activeTab === "My Doctor" ? "🩺" : "📋"}</div>
-            <h2 style={styles.placeholderTitle}>{activeTab}</h2>
-            <p style={styles.placeholderText}>This module is currently under development.</p>
+            {booked && (
+              <button
+                onClick={cancelAppointment}
+                disabled={loading}
+                style={{ ...styles.cancelBtn, marginTop: 20 }}
+              >
+                {loading ? "Cancelling..." : "Cancel Appointment"}
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </main>
     </div>
   );

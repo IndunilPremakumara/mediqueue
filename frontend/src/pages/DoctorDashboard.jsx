@@ -2,19 +2,11 @@ import { useState, useEffect } from "react";
 import API from "../services/api";
 import socket from "../services/socket";
 
-const mockQueue = [
-  { id: 1, name: "Sarah Johnson", time: "10:00 AM", status: "Waiting", age: 34, reason: "Follow-up" },
-  { id: 2, name: "Marcus Lee", time: "10:20 AM", status: "Waiting", age: 52, reason: "Chest pain" },
-  { id: 3, name: "Priya Nair", time: "10:40 AM", status: "Waiting", age: 28, reason: "Routine checkup" },
-  { id: 4, name: "Tom Bergmann", time: "11:00 AM", status: "Waiting", age: 67, reason: "Blood pressure" },
-];
-
 function DoctorDashboard({ user, logout }) {
   const [queue, setQueue] = useState([]);
   const [current, setCurrent] = useState(null);
   const [loading, setLoading] = useState(false);
   const [called, setCalled] = useState(0);
-  const [activeTab, setActiveTab] = useState("Dashboard");
 
   useEffect(() => {
     if (!user?.id) return;
@@ -159,16 +151,12 @@ function DoctorDashboard({ user, logout }) {
         <nav style={styles.nav}>
           {[
             { icon: "⊞", label: "Dashboard" },
-            { icon: "👥", label: "My Patients" },
-            { icon: "📅", label: "Schedule" },
-            { icon: "📊", label: "Analytics" },
           ].map(({ icon, label }) => (
             <div
               key={label}
-              onClick={() => setActiveTab(label)}
               style={{
                 ...styles.navItem,
-                ...(activeTab === label ? styles.navItemActive : {})
+                ...styles.navItemActive
               }}
             >
               <span style={{ fontSize: 16 }}>{icon}</span>
@@ -218,102 +206,91 @@ function DoctorDashboard({ user, logout }) {
           </button>
         </div>
 
-        {/* Conditional Content */}
-        {activeTab === "Dashboard" ? (
-          <>
-            {/* Stats */}
-            <div style={styles.statsGrid}>
-              {[
-                { label: "In Queue", value: queue.length, color: "#00C9A7" },
-                { label: "Consulted", value: called, color: "#7F77DD" },
-                { label: "Avg. Duration", value: "14 min", color: "#378ADD" },
-                { label: "Remaining", value: `${queue.length + (current ? 1 : 0)}`, color: "#EF9F27" },
-              ].map(({ label, value, color }) => (
-                <div key={label} style={styles.statCard}>
-                  <span style={styles.statLabel}>{label}</span>
-                  <span style={{ ...styles.statValue, color }}>{value}</span>
-                </div>
-              ))}
+        {/* Dashboard Content */}
+        <div style={styles.statsGrid}>
+          {[
+            { label: "In Queue", value: queue.length, color: "#00C9A7" },
+            { label: "Consulted", value: called, color: "#7F77DD" },
+            { label: "Avg. Duration", value: "14 min", color: "#378ADD" },
+            { label: "Remaining", value: `${queue.length + (current ? 1 : 0)}`, color: "#EF9F27" },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={styles.statCard}>
+              <span style={styles.statLabel}>{label}</span>
+              <span style={{ ...styles.statValue, color }}>{value}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={styles.contentGrid}>
+          {/* Current patient */}
+          <div style={styles.currentCard}>
+            <div style={styles.currentHeader}>
+              <h2 style={styles.sectionTitle}>Current Patient</h2>
+              {current && (
+                <span style={styles.consultingTag}>● Consulting</span>
+              )}
             </div>
 
-            <div style={styles.contentGrid}>
-              {/* Current patient */}
-              <div style={styles.currentCard}>
-                <div style={styles.currentHeader}>
-                  <h2 style={styles.sectionTitle}>Current Patient</h2>
-                  {current && (
-                    <span style={styles.consultingTag}>● Consulting</span>
-                  )}
+            {current ? (
+              <div style={{ animation: "slideIn 0.4s ease" }}>
+                <div style={styles.patientHero}>
+                  <div style={styles.patientAvatar}>
+                    {current.name.split(" ").map(n => n[0]).join("")}
+                  </div>
+                  <div>
+                    <h3 style={styles.patientName}>{current.name}</h3>
+                    <p style={styles.patientMeta}>Age {current.age} · {current.time}</p>
+                  </div>
                 </div>
 
-                {current ? (
-                  <div style={{ animation: "slideIn 0.4s ease" }}>
-                    <div style={styles.patientHero}>
-                      <div style={styles.patientAvatar}>
-                        {current.name.split(" ").map(n => n[0]).join("")}
-                      </div>
-                      <div>
-                        <h3 style={styles.patientName}>{current.name}</h3>
-                        <p style={styles.patientMeta}>Age {current.age} · {current.time}</p>
-                      </div>
-                    </div>
-
-                    <div style={styles.reasonBox}>
-                      <span style={styles.reasonLabel}>Chief Complaint</span>
-                      <span style={styles.reasonValue}>{current.reason}</span>
-                    </div>
-
-                    <div style={styles.actionRow}>
-                      <button onClick={completeConsult} style={styles.completeBtn}>
-                        Mark as Complete
-                      </button>
-                      <button style={styles.referBtn}>Refer</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={styles.emptyState}>
-                    <div style={styles.emptyIcon}>🩺</div>
-                    <p style={styles.emptyText}>No active patient</p>
-                    <p style={styles.emptyHint}>Press "Call Next Patient" to begin</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Queue list */}
-              <div style={styles.queueCard}>
-                <div style={styles.currentHeader}>
-                  <h2 style={styles.sectionTitle}>Waiting Queue</h2>
-                  <span style={styles.queueCount}>{queue.length} remaining</span>
+                <div style={styles.reasonBox}>
+                  <span style={styles.reasonLabel}>Chief Complaint</span>
+                  <span style={styles.reasonValue}>{current.reason}</span>
                 </div>
 
-                <div style={styles.queueList}>
-                  {queue.length === 0 ? (
-                    <div style={styles.emptyState}>
-                      <p style={styles.emptyText}>Queue is empty</p>
-                    </div>
-                  ) : (
-                    queue.map((patient, idx) => (
-                      <div key={patient.id} style={styles.queueRow}>
-                        <div style={styles.queuePos}>{idx + 1}</div>
-                        <div style={styles.queueInfo}>
-                          <span style={styles.queueName}>{patient.name}</span>
-                          <span style={styles.queueReason}>{patient.reason}</span>
-                        </div>
-                        <div style={styles.queueTime}>{patient.time}</div>
-                      </div>
-                    ))
-                  )}
+                <div style={styles.actionRow}>
+                  <button onClick={completeConsult} style={styles.completeBtn}>
+                    Mark as Complete
+                  </button>
+                  <button style={styles.referBtn}>Refer</button>
                 </div>
               </div>
-            </div>
-          </>
-        ) : (
-          <div style={styles.placeholderCard}>
-            <div style={styles.placeholderIcon}>{activeTab === "My Patients" ? "👥" : activeTab === "Schedule" ? "📅" : "📊"}</div>
-            <h2 style={styles.placeholderTitle}>{activeTab}</h2>
-            <p style={styles.placeholderText}>Medical module "{activeTab}" is currently loading internal data.</p>
+            ) : (
+              <div style={styles.emptyState}>
+                <div style={styles.emptyIcon}>🩺</div>
+                <p style={styles.emptyText}>No active patient</p>
+                <p style={styles.emptyHint}>Press "Call Next Patient" to begin</p>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Queue list */}
+          <div style={styles.queueCard}>
+            <div style={styles.currentHeader}>
+              <h2 style={styles.sectionTitle}>Waiting Queue</h2>
+              <span style={styles.queueCount}>{queue.length} remaining</span>
+            </div>
+
+            <div style={styles.queueList}>
+              {queue.length === 0 ? (
+                <div style={styles.emptyState}>
+                  <p style={styles.emptyText}>Queue is empty</p>
+                </div>
+              ) : (
+                queue.map((patient, idx) => (
+                  <div key={patient.id} style={styles.queueRow}>
+                    <div style={styles.queuePos}>{idx + 1}</div>
+                    <div style={styles.queueInfo}>
+                      <span style={styles.queueName}>{patient.name}</span>
+                      <span style={styles.queueReason}>{patient.reason}</span>
+                    </div>
+                    <div style={styles.queueTime}>{patient.time}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   );

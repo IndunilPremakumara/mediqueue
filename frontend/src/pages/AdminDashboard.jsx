@@ -1,27 +1,18 @@
 import { useEffect, useState } from "react";
 import API from "../services/api";
 
-const mockAppointments = [
-  { id: 1, patient_name: "Sarah Johnson", doctor_id: "Dr. Silva", appointment_time: "2026-04-15 10:00:00", status: "Completed" },
-  { id: 2, patient_name: "Marcus Lee", doctor_id: "Dr. Patel", appointment_time: "2026-04-15 10:20:00", status: "In Progress" },
-  { id: 3, patient_name: "Priya Nair", doctor_id: "Dr. Silva", appointment_time: "2026-04-15 10:40:00", status: "Waiting" },
-  { id: 4, patient_name: "Tom Bergmann", doctor_id: "Dr. Reyes", appointment_time: "2026-04-15 11:00:00", status: "Waiting" },
-  { id: 5, patient_name: "Aiko Tanaka", doctor_id: "Dr. Patel", appointment_time: "2026-04-15 11:20:00", status: "Scheduled" },
-  { id: 6, patient_name: "Carlos Rivera", doctor_id: "Dr. Reyes", appointment_time: "2026-04-15 11:40:00", status: "Scheduled" },
-];
-
 const statusConfig = {
-  Completed: { bg: "rgba(99,153,34,0.15)", color: "#97C459", dot: "#639922" },
-  "In Progress": { bg: "rgba(0,201,167,0.12)", color: "#00C9A7", dot: "#00C9A7" },
-  Waiting: { bg: "rgba(239,159,39,0.12)", color: "#FAC775", dot: "#EF9F27" },
-  Scheduled: { bg: "rgba(55,138,221,0.12)", color: "#85B7EB", dot: "#378ADD" },
+  finished: { label: "Completed", bg: "rgba(99,153,34,0.15)", color: "#97C459", dot: "#639922" },
+  "In Progress": { label: "In Progress", bg: "rgba(0,201,167,0.12)", color: "#00C9A7", dot: "#00C9A7" },
+  booked: { label: "Waiting", bg: "rgba(239,159,39,0.12)", color: "#FAC775", dot: "#EF9F27" },
+  cancelled: { label: "Cancelled", bg: "rgba(226,75,74,0.12)", color: "#f09595", dot: "#e24b4a" },
+  Scheduled: { label: "Scheduled", bg: "rgba(55,138,221,0.12)", color: "#85B7EB", dot: "#378ADD" },
 };
 
 function AdminDashboard({ user, logout }) {
   const [appointments, setAppointments] = useState([]);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("Dashboard");
 
   useEffect(() => {
     API.get("/appointments/all")
@@ -29,7 +20,7 @@ function AdminDashboard({ user, logout }) {
       .catch(() => {}); // use mock data if offline
   }, []);
 
-  const filters = ["All", "Completed", "In Progress", "Waiting", "Scheduled"];
+  const filters = ["All", "finished", "booked", "cancelled"];
   const filtered = appointments.filter(a => {
     const matchFilter = filter === "All" || a.status === filter;
     const matchSearch = a.patient_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -69,18 +60,12 @@ function AdminDashboard({ user, logout }) {
         <nav style={styles.nav}>
           {[
             { icon: "⊞", label: "Dashboard" },
-            { icon: "📅", label: "Appointments" },
-            { icon: "👥", label: "Patients" },
-            { icon: "🩺", label: "Doctors" },
-            { icon: "📊", label: "Reports" },
-            { icon: "⚙", label: "Settings" },
           ].map(({ icon, label }) => (
             <div
               key={label}
-              onClick={() => setActiveTab(label)}
               style={{
                 ...styles.navItem,
-                ...(activeTab === label ? styles.navItemActive : {})
+                ...styles.navItemActive
               }}
             >
               <span style={{ fontSize: 16 }}>{icon}</span>
@@ -118,127 +103,116 @@ function AdminDashboard({ user, logout }) {
           </div>
         </div>
 
-        {/* Conditional Content */}
-        {activeTab === "Dashboard" || activeTab === "Appointments" ? (
-          <>
-            {/* Overview stats */}
-            <div style={styles.statsGrid}>
-              {[
-                { label: "Total Today", value: appointments.length, color: "#fff", icon: "📋" },
-                { label: "Completed", value: appointments.filter(a => a.status === "Completed").length, color: "#97C459", icon: "✓" },
-                { label: "In Progress", value: appointments.filter(a => a.status === "In Progress").length, color: "#00C9A7", icon: "⟳" },
-                { label: "Waiting", value: appointments.filter(a => a.status === "Waiting").length, color: "#FAC775", icon: "⏱" },
-              ].map(({ label, value, color, icon }) => (
-                <div key={label} style={styles.statCard}>
-                  <div style={styles.statTop}>
-                    <span style={styles.statLabel}>{label}</span>
-                    <span style={{ fontSize: 18 }}>{icon}</span>
-                  </div>
-                  <span style={{ ...styles.statValue, color }}>{value}</span>
-                </div>
-              ))}
+        {/* Dashboard Content */}
+        <div style={styles.statsGrid}>
+          {[
+            { label: "Total Today", value: appointments.length, color: "#fff", icon: "📋" },
+            { label: "Completed", value: appointments.filter(a => a.status === "finished").length, color: "#97C459", icon: "✓" },
+            { label: "Pending", value: appointments.filter(a => a.status === "booked").length, color: "#FAC775", icon: "⏱" },
+            { label: "Cancelled", value: appointments.filter(a => a.status === "cancelled").length, color: "#f09595", icon: "✕" },
+          ].map(({ label, value, color, icon }) => (
+            <div key={label} style={styles.statCard}>
+              <div style={styles.statTop}>
+                <span style={styles.statLabel}>{label}</span>
+                <span style={{ fontSize: 18 }}>{icon}</span>
+              </div>
+              <span style={{ ...styles.statValue, color }}>{value}</span>
             </div>
+          ))}
+        </div>
 
-            {/* Appointments Table */}
-            <div style={styles.tableCard}>
-              {/* Table controls */}
-              <div style={styles.tableHeader}>
-                <h2 style={styles.tableTitle}>{activeTab === "Dashboard" ? "Recent Appointments" : "All Appointments"}</h2>
-                <div style={styles.tableControls}>
-                  <div style={styles.searchWrapper}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}>
-                      <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                    <input
-                      placeholder="Search patient or doctor..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      style={styles.searchInput}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Filter tabs */}
-              <div style={styles.filterRow}>
-                {filters.map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    style={{ ...styles.filterTab, ...(filter === f ? styles.filterTabActive : {}) }}
-                  >
-                    {f}
-                    <span style={{ ...styles.filterCount, ...(filter === f ? styles.filterCountActive : {}) }}>
-                      {f === "All" ? appointments.length : appointments.filter(a => a.status === f).length}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Table */}
-              <div style={{ overflowX: "auto" }}>
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      {["Patient", "Doctor", "Time", "Status", "Action"].map(h => (
-                        <th key={h} style={styles.th}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((a, i) => {
-                      const sc = statusConfig[a.status] || statusConfig.Scheduled;
-                      const dc = doctorColors[a.doctor_id] || "#888";
-                      return (
-                        <tr
-                          key={a.id}
-                          className="app-row"
-                          style={{ ...styles.tr, animation: `fadeUp ${0.1 + i * 0.05}s ease both` }}
-                        >
-                          <td style={styles.td}>
-                            <div style={styles.patientCell}>
-                              <div style={{ ...styles.miniAvatar, background: `rgba(0,201,167,0.1)`, color: "#00C9A7" }}>
-                                {initials(a.patient_name)}
-                              </div>
-                              <span style={styles.patientCellName}>{a.patient_name}</span>
-                            </div>
-                          </td>
-                          <td style={styles.td}>
-                            <span style={{ ...styles.doctorBadge, color: dc, background: `${dc}18` }}>
-                              {a.doctor_id}
-                            </span>
-                          </td>
-                          <td style={styles.td}>
-                            <span style={styles.timeCell}>{formatTime(a.appointment_time)}</span>
-                          </td>
-                          <td style={styles.td}>
-                            <span style={{ ...styles.statusBadge, background: sc.bg, color: sc.color }}>
-                              <span style={{ ...styles.statusDot2, background: sc.dot }} />
-                              {a.status}
-                            </span>
-                          </td>
-                          <td style={styles.td}>
-                            <button style={styles.viewBtn}>View</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div style={styles.tableFooter}>
-                <span style={styles.footerText}>Showing {filtered.length} of {appointments.length} appointments</span>
+        {/* Appointments Table */}
+        <div style={styles.tableCard}>
+          {/* Table controls */}
+          <div style={styles.tableHeader}>
+            <h2 style={styles.tableTitle}>Recent Appointments</h2>
+            <div style={styles.tableControls}>
+              <div style={styles.searchWrapper}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}>
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  placeholder="Search patient or doctor..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={styles.searchInput}
+                />
               </div>
             </div>
-          </>
-        ) : (
-          <div style={styles.placeholderCard}>
-            <div style={styles.placeholderIcon}>{activeTab === "Patients" ? "👥" : activeTab === "Doctors" ? "🩺" : activeTab === "Reports" ? "📊" : "⚙"}</div>
-            <h2 style={styles.placeholderTitle}>{activeTab}</h2>
-            <p style={styles.placeholderText}>Administrative module "{activeTab}" is currently under maintenance.</p>
           </div>
-        )}
+
+          {/* Filter tabs */}
+          <div style={styles.filterRow}>
+            {filters.map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                style={{ ...styles.filterTab, ...(filter === f ? styles.filterTabActive : {}) }}
+              >
+                {statusConfig[f]?.label || f}
+                <span style={{ ...styles.filterCount, ...(filter === f ? styles.filterCountActive : {}) }}>
+                  {f === "All" ? appointments.length : appointments.filter(a => a.status === f).length}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Table */}
+          <div style={{ overflowX: "auto" }}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  {["Patient", "Doctor", "Time", "Status", "Action"].map(h => (
+                    <th key={h} style={styles.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((a, i) => {
+                  const sc = statusConfig[a.status] || statusConfig.Scheduled;
+                  const dc = doctorColors[a.doctor_id] || "#888";
+                  return (
+                    <tr
+                      key={a.id}
+                      className="app-row"
+                      style={{ ...styles.tr, animation: `fadeUp ${0.1 + i * 0.05}s ease both` }}
+                    >
+                      <td style={styles.td}>
+                        <div style={styles.patientCell}>
+                          <div style={{ ...styles.miniAvatar, background: `rgba(0,201,167,0.1)`, color: "#00C9A7" }}>
+                            {initials(a.patient_name)}
+                          </div>
+                          <span style={styles.patientCellName}>{a.patient_name}</span>
+                        </div>
+                      </td>
+                      <td style={styles.td}>
+                        <span style={{ ...styles.doctorBadge, color: dc, background: `${dc}18` }}>
+                          {a.doctor_id}
+                        </span>
+                      </td>
+                      <td style={styles.td}>
+                        <span style={styles.timeCell}>{formatTime(a.appointment_time)}</span>
+                      </td>
+                      <td style={styles.td}>
+                        <span style={{ ...styles.statusBadge, background: sc.bg, color: sc.color }}>
+                          <span style={{ ...styles.statusDot2, background: sc.dot }} />
+                          {sc.label}
+                        </span>
+                      </td>
+                      <td style={styles.td}>
+                        <button style={styles.viewBtn}>View</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={styles.tableFooter}>
+            <span style={styles.footerText}>Showing {filtered.length} of {appointments.length} appointments</span>
+          </div>
+        </div>
       </main>
     </div>
   );
