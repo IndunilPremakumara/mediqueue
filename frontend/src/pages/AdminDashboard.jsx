@@ -14,10 +14,22 @@ function AdminDashboard({ user, logout }) {
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
 
+  const [systemHealth, setSystemHealth] = useState(null);
+
   useEffect(() => {
     API.get("/appointments/all")
       .then(res => setAppointments(res.data))
       .catch(() => {}); // use mock data if offline
+
+    const fetchHealth = () => {
+      API.get("/health/all")
+        .then(res => setSystemHealth(res.data))
+        .catch(() => setSystemHealth(null));
+    };
+
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const filters = ["All", "finished", "booked", "cancelled"];
@@ -95,13 +107,32 @@ function AdminDashboard({ user, logout }) {
         <div style={styles.topBar}>
           <div>
             <h1 style={styles.pageTitle}>Admin Dashboard</h1>
-            <p style={styles.pageSub}>Wednesday, April 15 · All Systems Operational</p>
+            <p style={styles.pageSub}>System Overview · {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
           </div>
-          <div style={styles.systemStatus}>
-            <span style={styles.statusDot} />
-            All services running
+          <div style={{...styles.systemStatus, color: systemHealth ? "#97C459" : "#f09595", background: systemHealth ? "rgba(99,153,34,0.1)" : "rgba(226,75,74,0.1)", border: systemHealth ? "1px solid rgba(99,153,34,0.2)" : "1px solid rgba(226,75,74,0.2)"}}>
+            <span style={{...styles.statusDot, background: systemHealth ? "#00C9A7" : "#e24b4a"}} />
+            {systemHealth ? "All Systems Operational" : "System Issues Detected"}
           </div>
         </div>
+
+        {/* System Health Panel */}
+        {systemHealth && (
+          <div style={styles.healthPanel}>
+            {systemHealth.services.map(s => (
+              <div key={s.name} style={styles.healthCard}>
+                <div style={styles.healthCardTop}>
+                  <span style={styles.healthName}>{s.name}</span>
+                  <span style={{...styles.healthBadge, background: s.status === 'UP' ? 'rgba(0,201,167,0.15)' : 'rgba(226,75,74,0.15)', color: s.status === 'UP' ? '#00C9A7' : '#f09595'}}>
+                    {s.status}
+                  </span>
+                </div>
+                <div style={styles.healthCardBottom}>
+                  <span style={styles.latencyText}>{s.latency} latency</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Dashboard Content */}
         <div style={styles.statsGrid}>
@@ -347,11 +378,48 @@ const styles = {
     fontWeight: 500,
   },
   statusDot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: "50%",
-    background: "#00C9A7",
     display: "inline-block",
+  },
+  healthPanel: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 16,
+    marginBottom: 24,
+    animation: "fadeUp 0.6s ease",
+  },
+  healthCard: {
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.06)",
+    borderRadius: 12,
+    padding: "12px 16px",
+  },
+  healthCardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  healthName: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "rgba(255,255,255,0.7)",
+  },
+  healthBadge: {
+    fontSize: 10,
+    padding: "2px 8px",
+    borderRadius: 10,
+    fontWeight: 700,
+  },
+  healthCardBottom: {
+    display: "flex",
+    alignItems: "center",
+  },
+  latencyText: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.3)",
   },
   statsGrid: {
     display: "grid",
