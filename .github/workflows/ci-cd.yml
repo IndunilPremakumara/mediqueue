@@ -29,6 +29,19 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Snyk security scan
+        if: ${{ secrets.SNYK_TOKEN != '' }}
+        run: |
+          npm install -g snyk
+          snyk test --all-projects
+        working-directory: frontend
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Audit dependencies
+        run: npm audit
+        working-directory: frontend
+
       - name: Lint
         run: npm run lint
         working-directory: frontend
@@ -65,6 +78,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
         working-directory: ${{ matrix.service }}
+
+      - name: Snyk security scan
+        if: ${{ secrets.SNYK_TOKEN != '' }}
+        run: |
+          npm install -g snyk
+          snyk test --all-projects
+        working-directory: ${{ matrix.service }}
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Run tests
         run: npm test --if-present
