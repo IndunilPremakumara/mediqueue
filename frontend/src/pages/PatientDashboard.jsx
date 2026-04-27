@@ -2,6 +2,20 @@ import { useState, useEffect } from "react";
 import API from "../services/api";
 import socket from "../services/socket";
 
+const formatDate = (dateString) => {
+  if (!dateString) return "—";
+  const date = new Date(dateString.replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+const formatTime = (dateString) => {
+  if (!dateString) return "—";
+  const date = new Date(dateString.replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
 function PatientDashboard({ user, logout }) {
   console.log("PatientDashboard mounted with user:", user);
   const [name, setName] = useState(user?.name || "");
@@ -13,6 +27,7 @@ function PatientDashboard({ user, logout }) {
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [selectedDoctorName, setSelectedDoctorName] = useState("No doctor selected");
+  const [showRescheduleWarning, setShowRescheduleWarning] = useState(false);
   const [appointmentTime, setAppointmentTime] = useState(() => {
     const now = new Date();
     now.setMinutes(now.getMinutes() + 30); // 30 minutes from now
@@ -37,6 +52,9 @@ function PatientDashboard({ user, logout }) {
           } else {
             setBooked(true);
           }
+          if (appt.appointment_time) {
+            setAppointmentTime(appt.appointment_time);
+          }
           setSelectedDoctorId(appt.doctor_id);
           // Fetch queue position
           API.get(`/queue/position/${appt.doctor_id}/${user.name}`)
@@ -45,6 +63,8 @@ function PatientDashboard({ user, logout }) {
         })
         .catch(() => {
           setBooked(false);
+          setFinished(false);
+          setQueueNum(null);
         });
     }
   }, [user.name]);
@@ -250,6 +270,7 @@ function PatientDashboard({ user, logout }) {
                   const doc = doctors.find(d => d._id === e.target.value);
                   if (doc) setSelectedDoctorName(doc.name);
                 }}
+                disabled={booked}
                 style={styles.select}
               >
                 {doctors.map(d => (
@@ -265,15 +286,17 @@ function PatientDashboard({ user, logout }) {
                 placeholder="YYYY-MM-DD HH:MM:SS"
                 value={appointmentTime}
                 onChange={(e) => setAppointmentTime(e.target.value)}
+                readOnly={booked}
+                onClick={() => booked && setShowRescheduleWarning(true)}
+                onFocus={() => booked && setShowRescheduleWarning(true)}
                 style={styles.input}
-                onFocus={(e) => { e.target.style.borderColor = "#00C9A7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,201,167,0.1)"; }}
-                onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
+                onMouseDown={(e) => booked && e.preventDefault()}
               />
             </div>
 
             <div style={styles.infoRow}>
-              <InfoItem icon="🗓" label="Date" value="Apr 15, 2026" />
-              <InfoItem icon="🕙" label="Time" value="10:00 AM" />
+              <InfoItem icon="🗓" label="Date" value={formatDate(appointmentTime)} />
+              <InfoItem icon="🕙" label="Time" value={formatTime(appointmentTime)} />
               <InfoItem icon="🩺" label="Doctor" value={selectedDoctorName.split(" ")[0]} />
             </div>
 
@@ -339,6 +362,16 @@ function PatientDashboard({ user, logout }) {
           </div>
         </div>
       </main>
+
+      {showRescheduleWarning && (
+        <div style={styles.modalOverlay} onClick={() => setShowRescheduleWarning(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Appointment Locked</h3>
+            <p style={styles.modalText}>You already have a confirmed appointment. Cancel the current appointment first if you want to change the date or doctor.</p>
+            <button style={styles.modalButton} onClick={() => setShowRescheduleWarning(false)}>Okay</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -691,6 +724,49 @@ const styles = {
     transition: "background 0.3s",
   },
   timelineLabel: { fontSize: 11, transition: "color 0.3s" },
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.5)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 50,
+  },
+  modal: {
+    maxWidth: 420,
+    width: "90%",
+    background: "#0F1724",
+    borderRadius: 18,
+    padding: 28,
+    boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  modalTitle: {
+    margin: 0,
+    marginBottom: 14,
+    fontSize: 18,
+    fontWeight: 700,
+    color: "#fff",
+  },
+  modalText: {
+    margin: 0,
+    marginBottom: 24,
+    fontSize: 14,
+    lineHeight: 1.7,
+    color: "rgba(255,255,255,0.8)",
+  },
+  modalButton: {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: 12,
+    border: "none",
+    background: "#00C9A7",
+    color: "#0B0F1A",
+    fontSize: 14,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
   placeholderCard: {
     background: "rgba(255,255,255,0.04)",
     border: "1px dashed rgba(255,255,255,0.1)",
@@ -721,3 +797,4 @@ const styles = {
 };
 
 export default PatientDashboard;
+

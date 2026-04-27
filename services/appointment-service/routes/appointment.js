@@ -97,7 +97,7 @@ router.get("/patient/:name", verifyToken, async (req, res) => {
   try {
     const { name } = req.params;
     const result = await pool.query(
-      "SELECT * FROM appointments WHERE patient_name = $1 ORDER BY created_at DESC LIMIT 1",
+      "SELECT * FROM appointments WHERE patient_name = $1 AND status = 'booked' ORDER BY created_at DESC LIMIT 1",
       [name]
     );
     if (result.rows.length === 0) {
