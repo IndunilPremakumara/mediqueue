@@ -121,4 +121,15 @@ router.get("/doctors", async (req, res) => {
   }
 });
 
+// GET USER BY ID (for inter-service calls)
+router.get("/user/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id, "name role email");
+    if (!user) return res.status(404).json("User not found");
+    res.json(user);
+  } catch (err) {
+    res.status(500).json(err.message);
+  }
+});
+
 module.exports = router;

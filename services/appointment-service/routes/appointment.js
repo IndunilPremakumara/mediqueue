@@ -4,21 +4,44 @@ const { Pool } = require("pg");
 require("dotenv").config();
 const { publishEvent } = require("../rabbitmq");
 const { verifyToken, checkRole } = require("../middleware/auth");
+const { fetchWithResilience } = require("../utils/resilience");
 
 const pool = new Pool({
   connectionString: process.env.DB_URI
 });
 
+// Helper for calling User Service
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://user-service:3001/auth";
+
 // BOOK APPOINTMENT
 router.post("/book", verifyToken, checkRole(["patient", "admin"]), async (req, res) => {
+  const { patient_name, doctor_id, doctor_name, appointment_time } = req.body;
+
+  if (!patient_name || !doctor_id || !appointment_time) {
+    return res.status(400).json("Missing required booking information.");
+  }
+
+  // VERIFY DOCTOR via Inter-Service Call (with Resilience)
+  try {
+    console.log(`[Appointment] Verifying doctor ${doctor_id} via User Service...`);
+    const doctor = await fetchWithResilience(`${USER_SERVICE_URL}/user/${doctor_id}`, {}, "user-service");
+    
+    if (doctor.role !== 'doctor') {
+      return res.status(400).json("Selected user is not a registered doctor.");
+    }
+    console.log(`[Appointment] Doctor verified: ${doctor.name}`);
+  } catch (err) {
+    console.error(`[Appointment] Doctor verification failed: ${err.message}`);
+    // If it's a 404, we know the doctor doesn't exist. Otherwise it's a system failure.
+    if (err.message.includes("404")) {
+        return res.status(404).json("Doctor not found in system.");
+    }
+    return res.status(503).json("Doctor verification service currently unavailable. Please try again later.");
+  }
+
   const client = await pool.connect();
 
   try {
-    const { patient_name, doctor_id, doctor_name, appointment_time } = req.body;
-
-    if (!patient_name || !doctor_id || !appointment_time) {
-      return res.status(400).json("Missing required booking information.");
-    }
 
     // CHECK IF PATIENT ALREADY HAS AN ACTIVE APPOINTMENT
     const activeAppointment = await pool.query(
