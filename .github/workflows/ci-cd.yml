@@ -30,7 +30,7 @@ jobs:
         working-directory: frontend
 
       - name: Snyk security scan
-        if: ${{ secrets.SNYK_TOKEN != '' }}
+        if: ${{ env.SNYK_TOKEN != '' }}
         run: |
           npm install -g snyk
           snyk test --all-projects
@@ -80,7 +80,7 @@ jobs:
         working-directory: ${{ matrix.service }}
 
       - name: Snyk security scan
-        if: ${{ secrets.SNYK_TOKEN != '' }}
+        if: ${{ env.SNYK_TOKEN != '' }}
         run: |
           npm install -g snyk
           snyk test --all-projects
