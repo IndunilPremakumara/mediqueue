@@ -23,6 +23,87 @@ MediQueue follows a microservices architecture with the following components:
 - **Notification Service**: Sends notifications via message queues (RabbitMQ)
 - **Message Broker**: RabbitMQ for inter-service communication
 
+## Repository Structure
+
+```text
+.
+├── docker-compose.yml
+├── README.md
+├── frontend/
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package.json
+│   ├── README.md
+│   ├── vite.config.js
+│   ├── public/
+│   └── src/
+│       ├── App.css
+│       ├── App.jsx
+│       ├── index.css
+│       ├── main.jsx
+│       ├── assets/
+│       ├── components/
+│       ├── pages/
+│       │   ├── AdminDashboard.jsx
+│       │   ├── DoctorDashboard.jsx
+│       │   ├── Login.jsx
+│       │   ├── PatientDashboard.jsx
+│       │   └── Register.jsx
+│       └── services/
+│           ├── api.js
+│           └── socket.js
+├── gateway/
+│   ├── Dockerfile
+│   ├── index.js
+│   ├── package.json
+│   └── middleware/
+│       └── auth.js
+├── k8s/
+│   ├── appointment-hpa.yaml
+│   ├── appointment-service-deployment.yaml
+│   ├── gateway-deployment.yaml
+│   ├── gateway-ingress.yaml
+│   ├── queue-deployment.yaml
+│   ├── queue-hpa.yaml
+│   ├── queue-service.yaml
+│   └── secrets.yaml
+└── services/
+    ├── appointment-service/
+    │   ├── Dockerfile
+    │   ├── index.js
+    │   ├── init.sql
+    │   ├── package.json
+    │   ├── rabbitmq.js
+    │   ├── middleware/
+    │   │   └── auth.js
+    │   ├── routes/
+    │   │   └── appointment.js
+    │   └── utils/
+    │       └── resilience.js
+    ├── consumers/
+    │   └── appointmentConsumer.js
+    ├── notification-service/
+    │   ├── Dockerfile
+    │   ├── index.js
+    │   └── package.json
+    ├── queue-service/
+    │   ├── Dockerfile
+    │   ├── index.js
+    │   ├── package.json
+    │   ├── rabbitmq.js
+    │   ├── middleware/
+    │   │   └── auth.js
+    │   └── routes/
+    │       └── queue.js
+    └── user-service/
+        ├── Dockerfile
+        ├── package.json
+        ├── models/
+        │   └── User.js
+        └── routes/
+            └── auth.js
+```
+
 ## Technologies Used
 
 - **Backend**: Node.js, Express.js
@@ -123,7 +204,25 @@ For production deployment using Kubernetes:
 
 ## Security
 
-This project uses Snyk for vulnerability scanning of dependencies. To run security scans locally:
+MediQueue uses automated security scanning on every push via GitHub Action
+
+### Automated Scanning
+- **npm audit** — scans all service dependencies against the npm vulnerability database
+- **Snyk** — deep dependency scanning with fix recommendations
+
+### Run Locally
+```bash
+# Audit all services
+cd gateway && npm audit
+cd services/user-service && npm audit
+cd services/appointment-service && npm audit
+cd services/queue-service && npm audit
+cd services/notification-service && npm audit
+cd frontend && npm audit
+
+# Fix automatically
+npm audit fix
+```
 
 1. Install Snyk CLI:
    ```bash
