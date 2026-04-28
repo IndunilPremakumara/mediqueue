@@ -1,0 +1,11 @@
+{
+  "users": [
+    { "name": "Dr. John Silva", "email": "doctor@test.com", "password": "password123", "role": "doctor" },
+    { "name": "Patient Mary", "email": "patient@test.com", "password": "password123", "role": "patient" },
+    { "name": "Admin User", "email": "admin@test.com", "password": "password123", "role": "admin" }
+  ],
+  "appointments": [
+    { "patient_name": "Mary Perera", "doctor_id": "1", "appointment_time": "2026-05-01 09:00", "status": "booked" },
+    { "patient_name": "Kumar Raj", "doctor_id": "1", "appointment_time": "2026-05-01 09:30", "status": "booked" }
+  ]
+}
