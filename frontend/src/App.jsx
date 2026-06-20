@@ -29,7 +29,6 @@ function App() {
           <Route
             path="/"
             element={
-              console.log("Routing user:", user),
               user.role === "patient" ? <PatientDashboard user={user} logout={logout} /> :
                 user.role === "doctor" ? <DoctorDashboard user={user} logout={logout} /> :
                   user.role === "admin" ? <AdminDashboard user={user} logout={logout} /> :

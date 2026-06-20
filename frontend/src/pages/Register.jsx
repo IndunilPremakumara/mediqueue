@@ -17,7 +17,7 @@ function Register({ setUser }) {
     setError("");
 
     try {
-      const res = await API.post("/users/register", {
+      const res = await API.post("/auth/register", {
         name,
         email,
         password,
@@ -39,6 +39,8 @@ function Register({ setUser }) {
       if (errorData?.errors) {
         // Handle validation errors array
         setError(errorData.errors.map(e => e.msg).join(", "));
+      } else if (errorData?.message) {
+        setError(errorData.message);
       } else {
         setError(errorData || "Register failed");
       }

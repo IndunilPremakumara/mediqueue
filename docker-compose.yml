@@ -4,9 +4,8 @@ services:
     build: ./services/user-service
     ports:
       - "3001:3001"
-    environment:
-      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017/mediqueue-users}
-      - JWT_SECRET=${JWT_SECRET:-supersecretkey123}
+    env_file:
+      - ./services/user-service/.env
     depends_on:
       mongo:
         condition: service_healthy
@@ -15,10 +14,8 @@ services:
     build: ./services/appointment-service
     ports:
       - "3002:3002"
-    environment:
-      - DB_URI=${DB_URI:-postgresql://postgres:password@postgres:5432/mediqueue}
-      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://rabbitmq}
-      - JWT_SECRET=${JWT_SECRET:-supersecretkey123}
+    env_file:
+      - ./services/appointment-service/.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -29,9 +26,8 @@ services:
     build: ./services/queue-service
     ports:
       - "3003:3003"
-    environment:
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://rabbitmq}
+    env_file:
+      - ./services/queue-service/.env
     depends_on:
       redis:
         condition: service_healthy
@@ -80,7 +76,7 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - ./services/appointment-service/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     healthcheck:

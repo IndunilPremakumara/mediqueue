@@ -1,8 +1,8 @@
 const jwt = require("jsonwebtoken");
 
 const publicRoutes = [
-  { path: "/api/users/login", method: "POST" },
-  { path: "/api/users/register", method: "POST" },
+  { path: "/api/auth/login", method: "POST" },
+  { path: "/api/auth/register", method: "POST" },
   { path: "/health", method: "GET" }
 ];
 
